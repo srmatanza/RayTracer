@@ -1,0 +1,85 @@
+﻿{
+  "configurations": [
+    {
+      "name": "x64-Release",
+      "generator": "Ninja",
+      "configurationType": "Release",
+      "inheritEnvironments": [
+        "msvc_x64_x64"
+      ],
+      "buildRoot": "C:\\projects\\shirley\\Tracer\\build\\${name}",
+      "installRoot": "C:\\projects\\shirley\\Tracer\\install\\${name}",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "-v",
+      "ctestCommandArgs": "",
+      "variables": [
+        {
+          "name": "CMAKE_CXX_COMPILER",
+          "value": "clang-cl"
+        },
+        {
+          "name": "CMAKE_C_COMPILER",
+          "value": "clang-cl"
+        },
+        {
+          "name": "CMAKE_SYSTEM_NAME",
+          "value": "Windows"
+        }
+      ]
+    },
+    {
+      "name": "x64-RelWithDebInfo",
+      "generator": "Ninja",
+      "configurationType": "RelWithDebInfo",
+      "inheritEnvironments": [
+        "msvc_x64_x64"
+      ],
+      "buildRoot": "C:\\projects\\shirley\\Tracer\\build\\${name}",
+      "installRoot": "C:\\projects\\shirley\\Tracer\\install\\${name}",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "-v",
+      "ctestCommandArgs": "",
+      "variables": [
+        {
+          "name": "CMAKE_CXX_COMPILER",
+          "value": "clang-cl"
+        },
+        {
+          "name": "CMAKE_C_COMPILER",
+          "value": "clang-cl"
+        },
+        {
+          "name": "CMAKE_SYSTEM_NAME",
+          "value": "Windows"
+        }
+      ]
+    },
+    {
+      "name": "x64-Debug",
+      "generator": "Ninja",
+      "configurationType": "Debug",
+      "inheritEnvironments": [
+        "msvc_x64_x64"
+      ],
+      "buildRoot": "C:\\projects\\shirley\\Tracer\\build\\${name}",
+      "installRoot": "C:\\projects\\shirley\\Tracer\\install\\${name}",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "-v",
+      "ctestCommandArgs": "",
+      "variables": [
+        {
+          "name": "CMAKE_CXX_COMPILER",
+          "value": "clang-cl"
+        },
+        {
+          "name": "CMAKE_C_COMPILER",
+          "value": "clang-cl"
+        },
+        {
+          "name": "CMAKE_SYSTEM_NAME",
+          "value": "Windows"
+        }
+      ]
+    }
+  ]
+}
