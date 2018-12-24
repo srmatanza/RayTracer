@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <thread>
 #include <mutex>
+#include <chrono>
 
 #include "vec3.h"
 #include "ray.h"
@@ -20,6 +21,7 @@
 using namespace std;
 
 uint64_t gTotalRays = 0;
+double dtLockTotalms = 0;
 
 vec3 color(const ray& r, hitable *world, int &raysCast, int depth=0) {
 
@@ -45,9 +47,10 @@ vec3 color(const ray& r, hitable *world, int &raysCast, int depth=0) {
 
 int main(int argc, char** argv)
 {
+	auto start = chrono::steady_clock::now();
 	int nx = 400;
 	int ny = 200;
-	int ns = 1;
+	int ns = 200;
 	int maxThreads = 12;
 
 	if (argc > 1) {
@@ -73,11 +76,12 @@ int main(int argc, char** argv)
 
 	uint32_t* imgBuffer = (uint32_t*)malloc(nx * ny * sizeof(uint32_t));
 
-	hitable *list[4];
-	list[0] = new sphere(vec3(0, 0, -1), 0.5, new lambertian(vec3(0.8, 0.3, 0.3)));
+	hitable *list[5];
+	list[0] = new sphere(vec3(0, 0, -1), 0.5, new lambertian(vec3(0.1, 0.2, 0.5)));
 	list[1] = new sphere(vec3(0, -100.5, -1), 100, new lambertian(vec3(0.8, 0.8, 0.0)));
 	list[2] = new sphere(vec3(1, 0, -1), 0.5, new metal(vec3(0.8, 0.6, 0.2), 0.2));
-	list[3] = new sphere(vec3(-1, 0, -1), 0.5, new metal(vec3(0.8, 0.8, 0.8), 1.0));
+	list[3] = new sphere(vec3(-1, 0, -1), 0.5, new dielectric(1.5));
+	list[4] = new sphere(vec3(-1, 0, -1), -0.45, new dielectric(1.5));
 	hitable *world = new hitable_list(list, sizeof(list) / sizeof(*list));
 	camera cam;
 
@@ -120,30 +124,55 @@ int main(int argc, char** argv)
 	};
 
 	vector<thread*> threads;
-	for (int i = 0; i < maxThreads; i++) {
-		thread* t = new thread([&uvCoords, &colorPixel, &g_uvCoords_mutex]() {
-			int batchSize = 16;
-			while (uvCoords.size() > 0) {
-				vector<pair<int, int>> pixelBatch;
-				{
-					lock_guard<mutex> guard(g_uvCoords_mutex);
-					while(uvCoords.size() > 0 && pixelBatch.size()<batchSize) {
-						pixelBatch.push_back(uvCoords.back());
-						uvCoords.pop_back();
-					}					
-				}
-				for (auto it = pixelBatch.begin(); it < pixelBatch.end(); it++) {
-					gTotalRays += colorPixel(it->first, it->second);
+	auto processPixels = [&uvCoords, &colorPixel, &g_uvCoords_mutex]() {
+		int batchSize = 16;
+		int totalPixels = 0;
+		int threadTotalRays = 0;
+		double dT = 0;
+		
+		auto beforeLoop = chrono::steady_clock::now();
+
+		while (uvCoords.size() > 0) {
+			vector<pair<int, int>> pixelBatch;
+			auto beforeLock = chrono::steady_clock::now();
+			{
+				lock_guard<mutex> guard(g_uvCoords_mutex);
+				while (uvCoords.size() > 0 && pixelBatch.size() < batchSize) {
+					pixelBatch.push_back(uvCoords.back());
+					uvCoords.pop_back();
 				}
 			}
-		});
+			auto afterLock = chrono::steady_clock::now();
+			dT += chrono::duration <double, milli>((afterLock - beforeLock)).count();
+			for (auto it = pixelBatch.begin(); it < pixelBatch.end(); it++) {
+				threadTotalRays += colorPixel(it->first, it->second);
+				totalPixels++;
+			}
+		}
+		auto afterLoop = chrono::steady_clock::now();
+		auto dtL = chrono::duration <double, milli>((afterLoop - beforeLoop)).count();
+		cout << "Processed " << totalPixels << "px in " << dtL << "ms (which is "<< ((totalPixels*1000.0)/dtL) <<" pixels per sec)\n";
+
+		gTotalRays += threadTotalRays;
+		dtLockTotalms += dT;
+	};
+
+	for (int i = 1; i < maxThreads; i++) {
+		thread* t = new thread(processPixels);
 		threads.push_back(t);
 	}
+
+	auto beginColoring = chrono::steady_clock::now();
+
+	// Make sure the main thread has something to do
+	processPixels();
 
 	for (auto it = threads.begin(); it < threads.end(); it++) {
 		thread* t = *it;
 		t->join();
 	}
+
+	auto beginImage = chrono::steady_clock::now();
 	
 	ofstream ppm;
 	ppm.open("image.ppm", ios::out | ios::binary);
@@ -158,7 +187,16 @@ int main(int argc, char** argv)
 	}
 
 	ppm.close();
+	auto doneWriting = chrono::steady_clock::now();
+
+	auto dtSetup = beginColoring - start;
+	auto dtMT = beginImage - beginColoring;
+	auto dtImg = doneWriting - beginImage;
 	cout << "We cast " << gTotalRays << " rays." << endl;
+	cout << "Setup time: " << chrono::duration <double, milli>(dtSetup).count() << " ms" << endl;
+	cout << "The multithreaded part: " << chrono::duration <double, milli>(dtMT).count() << " ms" << endl;
+	cout << "Time spent locking and unlocking the mutex: " << dtLockTotalms << " ms" << endl;
+	cout << "Writing out the image: " << chrono::duration <double, milli>(dtImg).count() << " ms" << endl;
 	return 0;
 }
 
