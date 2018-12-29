@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <iostream>
 #include <random>
+#include <chrono>
 #include "pcg_random.hpp"
 #include "float.h"
 
@@ -18,11 +19,15 @@ tfp TRACER_MAXFLOAT = FLT_MAX;
 #endif
 
 tfp drand() {
-	static pcg_extras::seed_seq_from<random_device> seed_source;
-	static pcg32 rng(seed_source);
+	//static pcg_extras::seed_seq_from<random_device> seed_source;
+	//static pcg32 rng(seed_source);
+	static pcg32 rng(4);
 
 	uint32_t x = rng();
 	return (static_cast<tfp>(x) / static_cast<tfp>(UINT32_MAX));
+
+	// VERY SLOW
+	//return static_cast<tfp>(rand())/static_cast<tfp>(RAND_MAX);
 };
 
 class vec3 {
@@ -30,7 +35,11 @@ private:
 	tfp e[3];
 
 public:
-	vec3() {}
+	vec3() {
+		e[0] = 0;
+		e[1] = 0;
+		e[2] = 0;
+	}
 
 	vec3(const vec3& anInst) {
 		e[0] = anInst[0];
